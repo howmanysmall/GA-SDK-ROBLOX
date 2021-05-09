@@ -1,16 +1,16 @@
-local utilities = {}
+local Utilities = {}
 
-function utilities:isStringNullOrEmpty(s)
-	return (not s) or #s == 0
+function Utilities.isStringNullOrEmpty(string)
+	return not string or #string == 0
 end
 
-function utilities:stringArrayContainsString(array, search)
+function Utilities.stringArrayContainsString(array, search)
 	if #array == 0 then
 		return false
 	end
 
-	for _, s in ipairs(array) do
-		if s == search then
+	for _, searchString in ipairs(array) do
+		if searchString == search then
 			return true
 		end
 	end
@@ -18,4 +18,4 @@ function utilities:stringArrayContainsString(array, search)
 	return false
 end
 
-return utilities
+return Utilities

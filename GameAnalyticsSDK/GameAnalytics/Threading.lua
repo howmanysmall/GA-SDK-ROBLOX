@@ -1,4 +1,8 @@
-local threading = {
+local RunService = game:GetService("RunService")
+local Logger = require(script.Parent.Logger)
+local Scheduler = require(script.Parent.Scheduler)
+
+local Threading = {
 	_canSafelyClose = true,
 	_endThread = false,
 	_isRunning = false,
@@ -7,77 +11,76 @@ local threading = {
 	_hasScheduledBlockRun = true,
 }
 
-local logger = require(script.Parent.Logger)
-local RunService = game:GetService("RunService")
+local Scheduler_Spawn = Scheduler.Spawn
+local Scheduler_Wait = Scheduler.Wait
+local TimeFunction = Scheduler.TimeFunction
 
 local function getScheduledBlock()
-	local now = tick()
+	local now = TimeFunction()
 
-	if not threading._hasScheduledBlockRun and threading._scheduledBlock ~= nil and threading._scheduledBlock.deadline <= now then
-		threading._hasScheduledBlockRun = true
-		return threading._scheduledBlock
+	if not Threading._hasScheduledBlockRun and Threading._scheduledBlock ~= nil and Threading._scheduledBlock.deadline <= now then
+		Threading._hasScheduledBlockRun = true
+		return Threading._scheduledBlock
 	else
 		return nil
 	end
 end
 
 local function run()
+	Scheduler_Spawn(function()
+		Logger:debug("Starting GA thread")
 
-	spawn(function()
-		logger:d("Starting GA thread")
+		while not Threading._endThread do
+			Threading._canSafelyClose = false
 
-		while not threading._endThread do
-			threading._canSafelyClose = false
-
-			if #threading._blocks ~= 0 then
-				for _, b in pairs(threading._blocks) do
-					local s, e = pcall(b.block)
-					if not s then
-						logger:e(e)
+			if #Threading._blocks ~= 0 then
+				for _, block in ipairs(Threading._blocks) do
+					local success, callError = pcall(block.block)
+					if not success then
+						Logger:error(callError)
 					end
 				end
 
-				threading._blocks = {}
+				Threading._blocks = {}
 			end
 
 			local timedBlock = getScheduledBlock()
 			if timedBlock ~= nil then
-				local s, e = pcall(timedBlock.block)
-				if not s then
-					logger:e(e)
+				local success, callError = pcall(timedBlock.block)
+				if not success then
+					Logger:error(callError)
 				end
 			end
 
-			threading._canSafelyClose = true
-			wait(1)
+			Threading._canSafelyClose = true
+			Scheduler_Wait(1)
 		end
 
-		logger:d("GA thread stopped")
+		Logger:debug("GA thread stopped")
 	end)
 
 	--Safely Close
 	game:BindToClose(function()
-
 		-- waiting bug fix to work inside studio
 		if RunService:IsStudio() then
 			return
 		end
 
 		--Give game.Players.PlayerRemoving time to to its thang
-		wait(1)
+		Scheduler_Wait(1)
 
 		--Delay
-		if not threading._canSafelyClose then
+		if not Threading._canSafelyClose then
 			repeat
-				wait()
-			until threading._canSafelyClose
+				Scheduler_Wait(0.03)
+			until Threading._canSafelyClose
 		end
 
-		wait(3)
+		Scheduler_Wait(3)
 	end)
 end
 
-function threading:scheduleTimer(interval, callback)
+function Threading:scheduleTimer(interval, callback)
 	if self._endThread then
 		return
 	end
@@ -89,7 +92,7 @@ function threading:scheduleTimer(interval, callback)
 
 	local timedBlock = {
 		block = callback,
-		deadline = tick() + interval,
+		deadline = TimeFunction() + interval,
 	}
 
 	if self._hasScheduledBlockRun then
@@ -98,7 +101,7 @@ function threading:scheduleTimer(interval, callback)
 	end
 end
 
-function threading:performTaskOnGAThread(callback)
+function Threading:performTaskOnGAThread(callback)
 	if self._endThread then
 		return
 	end
@@ -108,15 +111,11 @@ function threading:performTaskOnGAThread(callback)
 		run()
 	end
 
-	local timedBlock = {
-		block = callback,
-	}
-
-	self._blocks[#self._blocks + 1] = timedBlock
+	table.insert(self._blocks, {block = callback})
 end
 
-function threading:stopThread()
+function Threading:stopThread()
 	self._endThread = true
 end
 
-return threading
+return Threading

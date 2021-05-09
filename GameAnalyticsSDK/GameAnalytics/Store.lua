@@ -1,9 +1,10 @@
-local DS = game:GetService("DataStoreService")
-local RunService = game:GetService("RunService")
+local DataStorePromise = require(script.Parent.Promises.DataStorePromise)
+local DataStoreService = require(script.Parent.Vendor.DataStoreService)
+local catchFactory = require(script.Parent.Promises.catchFactory)
 
-local store = {
-	PlayerDS = RunService:IsStudio() and {} or DS:GetDataStore("GA_PlayerDS_1.0.0"),
-	AutoSaveData = 180, --Set to 0 to disable
+local Store = {
+	PlayerDS = DataStoreService:GetDataStore("GA_PlayerDS_1.0.0"),
+	AutoSaveData = 180, -- Set to 0 to disable
 	BasePlayerData = {
 		Sessions = 0,
 		Transactions = 0,
@@ -20,9 +21,9 @@ local store = {
 		Configurations = {},
 		RemoteConfigsIsReady = false,
 		PlayerTeleporting = false,
-		OwnedGamepasses = nil, --nil means a completely new player. {} means player with no game passes
+		OwnedGamepasses = nil, -- nil means a completely new player. {} means player with no game passes
 		CountryCode = "",
-		CustomUserId = ""
+		CustomUserId = "",
 	},
 
 	DataToSave = {
@@ -35,83 +36,69 @@ local store = {
 		"OwnedGamepasses",
 	},
 
-	--Cache
+	-- Cache
 	PlayerCache = {},
 	EventsQueue = {},
 }
 
-function store:GetPlayerData(Player)
-	local PlayerData
-	local success = pcall(function()
-		PlayerData = RunService:IsStudio() and {} or (store.PlayerDS:GetAsync(Player.UserId) or {})
-	end)
-
+function Store.GetPlayerData(player: Player)
+	local success, playerData = DataStorePromise.promiseGet(Store.PlayerDS, player.UserId):catch(catchFactory("DataStorePromise.promiseGet")):await()
 	if not success then
-		PlayerData = {}
+		playerData = {}
 	end
 
-	return PlayerData
+	return playerData
 end
 
-function store:GetPlayerDataFromCache(userId)
-    local playerData = store.PlayerCache[tonumber(userId)]
-    if playerData then
-        return playerData
-    end
-    playerData = store.PlayerCache[tostring(userId)]
-    return playerData
-end
-
-function store:GetErrorDataStore(scope)
-	local ErrorDS
-	local success = pcall(function()
-		ErrorDS = RunService:IsStudio() and {} or DS:GetDataStore("GA_ErrorDS_1.0.0", scope)
-	end)
-
-	if not success then
-		ErrorDS = {}
+function Store.GetPlayerDataFromCache(userId: number)
+	local playerData = Store.PlayerCache[tonumber(userId)]
+	if playerData then
+		return playerData
 	end
 
-	return ErrorDS
+	playerData = Store.PlayerCache[tostring(userId)]
+	return playerData
 end
 
-function store:SavePlayerData(Player)
+function Store.GetErrorDataStore(scope: string?)
+	local success, errorDataStore = DataStorePromise.promiseDataStore("GA_ErrorDS_1.0.0", scope):catch(catchFactory("DataStorePromise.promiseDataStore")):await()
+	if not success then
+		errorDataStore = {}
+	end
 
-	--Variables
-	local PlayerData = store:GetPlayerDataFromCache(Player.UserId)
-	local SavePlayerData = {}
+	return errorDataStore
+end
 
-	if not PlayerData then
+function Store.SavePlayerData(player: Player)
+	-- Variables
+	local playerData = Store.GetPlayerDataFromCache(player.UserId)
+	local savePlayerData = {}
+	if not playerData then
 		return
 	end
 
-	--Fill
-	for _, key in pairs(store.DataToSave) do
-		SavePlayerData[key] = PlayerData[key]
+	-- Fill
+	for _, key in pairs(Store.DataToSave) do
+		savePlayerData[key] = playerData[key]
 	end
 
-	--Save
-	if not RunService:IsStudio() then
-		pcall(function()
-			store.PlayerDS:SetAsync(Player.UserId, SavePlayerData)
-		end)
-	end
+	-- TODO: Convert this to UpdateAsync?
+	-- Save
+	DataStorePromise.promiseSet(Store.PlayerDS, player.UserId, savePlayerData):catch(catchFactory("DataStorePromise.promiseSet")):await()
 end
 
-function store:IncrementErrorCount(ErrorDS, ErrorKey, step)
-	if not ErrorKey then
+function Store.IncrementErrorCount(errorDataStore: DataStore, errorKey: string?, step: number?)
+	if not errorKey then
 		return
 	end
 
-	local count = 0
-	--Increment count
-	if not RunService:IsStudio() then
-		pcall(function()
-			count = ErrorDS:IncrementAsync(ErrorKey, step)
-		end)
+	-- Increment count
+	local success, count = DataStorePromise.promiseIncrement(errorDataStore, errorKey, step):catch(catchFactory("DataStorePromise.promiseIncrement")):await()
+	if not success then
+		count = 0
 	end
 
 	return count
 end
 
-return store
+return Store

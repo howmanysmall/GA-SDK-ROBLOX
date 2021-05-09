@@ -60,15 +60,10 @@ API:
 		HashLib.base64_to_bin
 		HashLib.bin_to_base64
 
---]=]---------------------------------------------------------------------------
+--]=]
+---------------------------------------------------------------------------
 
 local Base64 = require(script.Base64)
-
---------------------------------------------------------------------------------
--- LOCALIZATION FOR VM OPTIMIZATIONS
---------------------------------------------------------------------------------
-
-local ipairs = ipairs
 
 --------------------------------------------------------------------------------
 -- 32-BIT BITWISE FUNCTIONS
@@ -154,7 +149,7 @@ local function sha256_feed_64(H, str, offs, size)
 	local h1, h2, h3, h4, h5, h6, h7, h8 = H[1], H[2], H[3], H[4], H[5], H[6], H[7], H[8]
 	for pos = offs, offs + size - 1, 64 do
 		for j = 1, 16 do
-			pos = pos + 4
+			pos += 4
 			local a, b, c, d = string.byte(str, pos - 3, pos)
 			W[j] = ((a * 256 + b) * 256 + c) * 256 + d
 		end
@@ -192,21 +187,17 @@ local function sha512_feed_128(H_lo, H_hi, str, offs, size)
 	local h1_hi, h2_hi, h3_hi, h4_hi, h5_hi, h6_hi, h7_hi, h8_hi = H_hi[1], H_hi[2], H_hi[3], H_hi[4], H_hi[5], H_hi[6], H_hi[7], H_hi[8]
 	for pos = offs, offs + size - 1, 128 do
 		for j = 1, 16 * 2 do
-			pos = pos + 4
+			pos += 4
 			local a, b, c, d = string.byte(str, pos - 3, pos)
 			W[j] = ((a * 256 + b) * 256 + c) * 256 + d
 		end
 
 		for jj = 17 * 2, 80 * 2, 2 do
 			local a_lo, a_hi, b_lo, b_hi = W[jj - 30], W[jj - 31], W[jj - 4], W[jj - 5]
-			local tmp1 = bit32_bxor(bit32_rshift(a_lo, 1) + bit32_lshift(a_hi, 31), bit32_rshift(a_lo, 8) + bit32_lshift(a_hi, 24), bit32_rshift(a_lo, 7) + bit32_lshift(a_hi, 25)) % 4294967296 +
-				bit32_bxor(bit32_rshift(b_lo, 19) + bit32_lshift(b_hi, 13), bit32_lshift(b_lo, 3) + bit32_rshift(b_hi, 29), bit32_rshift(b_lo, 6) + bit32_lshift(b_hi, 26)) % 4294967296 +
-				W[jj - 14] + W[jj - 32]
+			local tmp1 = bit32_bxor(bit32_rshift(a_lo, 1) + bit32_lshift(a_hi, 31), bit32_rshift(a_lo, 8) + bit32_lshift(a_hi, 24), bit32_rshift(a_lo, 7) + bit32_lshift(a_hi, 25)) % 4294967296 + bit32_bxor(bit32_rshift(b_lo, 19) + bit32_lshift(b_hi, 13), bit32_lshift(b_lo, 3) + bit32_rshift(b_hi, 29), bit32_rshift(b_lo, 6) + bit32_lshift(b_hi, 26)) % 4294967296 + W[jj - 14] + W[jj - 32]
 
 			local tmp2 = tmp1 % 4294967296
-			W[jj - 1] = bit32_bxor(bit32_rshift(a_hi, 1) + bit32_lshift(a_lo, 31), bit32_rshift(a_hi, 8) + bit32_lshift(a_lo, 24), bit32_rshift(a_hi, 7)) +
-				bit32_bxor(bit32_rshift(b_hi, 19) + bit32_lshift(b_lo, 13), bit32_lshift(b_hi, 3) + bit32_rshift(b_lo, 29), bit32_rshift(b_hi, 6)) +
-				W[jj - 15] + W[jj - 33] + (tmp1 - tmp2) / 4294967296
+			W[jj - 1] = bit32_bxor(bit32_rshift(a_hi, 1) + bit32_lshift(a_lo, 31), bit32_rshift(a_hi, 8) + bit32_lshift(a_lo, 24), bit32_rshift(a_hi, 7)) + bit32_bxor(bit32_rshift(b_hi, 19) + bit32_lshift(b_lo, 13), bit32_lshift(b_hi, 3) + bit32_rshift(b_lo, 29), bit32_rshift(b_hi, 6)) + W[jj - 15] + W[jj - 33] + (tmp1 - tmp2) / 4294967296
 
 			W[jj] = tmp2
 		end
@@ -215,15 +206,10 @@ local function sha512_feed_128(H_lo, H_hi, str, offs, size)
 		local a_hi, b_hi, c_hi, d_hi, e_hi, f_hi, g_hi, h_hi = h1_hi, h2_hi, h3_hi, h4_hi, h5_hi, h6_hi, h7_hi, h8_hi
 		for j = 1, 80 do
 			local jj = 2 * j
-			local tmp1 = bit32_bxor(bit32_rshift(e_lo, 14) + bit32_lshift(e_hi, 18), bit32_rshift(e_lo, 18) + bit32_lshift(e_hi, 14), bit32_lshift(e_lo, 23) + bit32_rshift(e_hi, 9)) % 4294967296 +
-				(bit32_band(e_lo, f_lo) + bit32_band(-1 - e_lo, g_lo)) % 4294967296 +
-				h_lo + K_lo[j] + W[jj]
+			local tmp1 = bit32_bxor(bit32_rshift(e_lo, 14) + bit32_lshift(e_hi, 18), bit32_rshift(e_lo, 18) + bit32_lshift(e_hi, 14), bit32_lshift(e_lo, 23) + bit32_rshift(e_hi, 9)) % 4294967296 + (bit32_band(e_lo, f_lo) + bit32_band(-1 - e_lo, g_lo)) % 4294967296 + h_lo + K_lo[j] + W[jj]
 
 			local z_lo = tmp1 % 4294967296
-			local z_hi = bit32_bxor(bit32_rshift(e_hi, 14) + bit32_lshift(e_lo, 18), bit32_rshift(e_hi, 18) + bit32_lshift(e_lo, 14), bit32_lshift(e_hi, 23) + bit32_rshift(e_lo, 9)) +
-				bit32_band(e_hi, f_hi) + bit32_band(-1 - e_hi, g_hi) +
-				h_hi + K_hi[j] + W[jj - 1] +
-				(tmp1 - z_lo) / 4294967296
+			local z_hi = bit32_bxor(bit32_rshift(e_hi, 14) + bit32_lshift(e_lo, 18), bit32_rshift(e_hi, 18) + bit32_lshift(e_lo, 14), bit32_lshift(e_hi, 23) + bit32_rshift(e_lo, 9)) + bit32_band(e_hi, f_hi) + bit32_band(-1 - e_hi, g_hi) + h_hi + K_hi[j] + W[jj - 1] + (tmp1 - z_lo) / 4294967296
 
 			h_lo = g_lo
 			h_hi = g_hi
@@ -277,11 +263,11 @@ end
 
 local function md5_feed_64(H, str, offs, size)
 	-- offs >= 0, size >= 0, size is multiple of 64
-	local W, K, md5_next_shift = common_W, md5_K, md5_next_shift
+	local W, K, md5_next_shift2 = common_W, md5_K, md5_next_shift
 	local h1, h2, h3, h4 = H[1], H[2], H[3], H[4]
 	for pos = offs, offs + size - 1, 64 do
 		for j = 1, 16 do
-			pos = pos + 4
+			pos += 4
 			local a, b, c, d = string.byte(str, pos - 3, pos)
 			W[j] = ((d * 256 + c) * 256 + b) * 256 + a
 		end
@@ -290,7 +276,7 @@ local function md5_feed_64(H, str, offs, size)
 		local s = 32 - 7
 		for j = 1, 16 do
 			local F = bit32_rrotate(bit32_band(b, c) + bit32_band(-1 - b, d) + a + K[j] + W[j], s) + b
-			s = md5_next_shift[s]
+			s = md5_next_shift2[s]
 			a = d
 			d = c
 			c = b
@@ -300,7 +286,7 @@ local function md5_feed_64(H, str, offs, size)
 		s = 32 - 5
 		for j = 17, 32 do
 			local F = bit32_rrotate(bit32_band(d, b) + bit32_band(-1 - d, c) + a + K[j] + W[(5 * j - 4) % 16 + 1], s) + b
-			s = md5_next_shift[s]
+			s = md5_next_shift2[s]
 			a = d
 			d = c
 			c = b
@@ -310,7 +296,7 @@ local function md5_feed_64(H, str, offs, size)
 		s = 32 - 4
 		for j = 33, 48 do
 			local F = bit32_rrotate(bit32_bxor(bit32_bxor(b, c), d) + a + K[j] + W[(3 * j + 2) % 16 + 1], s) + b
-			s = md5_next_shift[s]
+			s = md5_next_shift2[s]
 			a = d
 			d = c
 			c = b
@@ -320,7 +306,7 @@ local function md5_feed_64(H, str, offs, size)
 		s = 32 - 6
 		for j = 49, 64 do
 			local F = bit32_rrotate(bit32_bxor(c, bit32_bor(b, -1 - d)) + a + K[j] + W[(j * 7 - 7) % 16 + 1], s) + b
-			s = md5_next_shift[s]
+			s = md5_next_shift2[s]
 			a = d
 			d = c
 			c = b
@@ -342,7 +328,7 @@ local function sha1_feed_64(H, str, offs, size)
 	local h1, h2, h3, h4, h5 = H[1], H[2], H[3], H[4], H[5]
 	for pos = offs, offs + size - 1, 64 do
 		for j = 1, 16 do
-			pos = pos + 4
+			pos += 4
 			local a, b, c, d = string.byte(str, pos - 3, pos)
 			W[j] = ((a * 256 + b) * 256 + c) * 256 + d
 		end
@@ -407,7 +393,7 @@ local function keccak_feed(lanes_lo, lanes_hi, str, offs, size, block_size_in_by
 		for j = 1, qwords_qty do
 			local a, b, c, d = string.byte(str, pos + 1, pos + 4)
 			lanes_lo[j] = bit32_bxor(lanes_lo[j], ((d * 256 + c) * 256 + b) * 256 + a)
-			pos = pos + 8
+			pos += 8
 			a, b, c, d = string.byte(str, pos - 3, pos)
 			lanes_hi[j] = bit32_bxor(lanes_hi[j], ((d * 256 + c) * 256 + b) * 256 + a)
 		end
@@ -632,14 +618,14 @@ do
 		local result, carry, value, weight = table.create(result_length), 0.0, 0.0, 1.0
 		for j = 1, result_length do
 			for k = math.max(1, j + 1 - #src2), math.min(j, #src1) do
-				carry = carry + factor * src1[k] * src2[j + 1 - k] -- "int32" is not enough for multiplication result, that's why "factor" must be of type "double"
+				carry += factor * src1[k] * src2[j + 1 - k] -- "int32" is not enough for multiplication result, that's why "factor" must be of type "double"
 			end
 
 			local digit = carry % TWO_POW_24
 			result[j] = math.floor(digit)
 			carry = (carry - digit) / TWO_POW_24
-			value = value + digit * weight
-			weight = weight * TWO_POW_24
+			value += digit * weight
+			weight *= TWO_POW_24
 		end
 
 		return result, value
@@ -647,13 +633,14 @@ do
 
 	local idx, step, p, one, sqrt_hi, sqrt_lo = 0, {4, 1, 2, -2, 2}, 4, {1}, sha2_H_hi, sha2_H_lo
 	repeat
-		p = p + step[p % 6]
+		p += step[p % 6]
 		local d = 1
 		repeat
 			d = d + step[d % 6]
 			if d * d > p then
 				-- next prime number is found
 				local root = p ^ (1 / 3)
+				--- @type number
 				local R = root * TWO_POW_40
 				R = mul(table.create(1, math.floor(R)), one, 1.0, 2)
 				local _, delta = mul(R, mul(R, R, 1.0, 4), -1.0, 4)
@@ -666,18 +653,18 @@ do
 					R = mul(table.create(1, math.floor(R)), one, 1.0, 2)
 					_, delta = mul(R, R, -1.0, 2)
 
-					local hi = R[2] % 65536 * 65536 + math.floor(R[1] / 256)
-					local lo = R[1] % 256 * 16777216 + math.floor(delta * TWO_POW_NEG_17 / root)
-					local idx = idx % 8 + 1
-					sha2_H_ext256[224][idx] = lo
-					sqrt_hi[idx], sqrt_lo[idx] = hi, lo + hi * hi_factor
+					local hi2 = R[2] % 65536 * 65536 + math.floor(R[1] / 256)
+					local lo2 = R[1] % 256 * 16777216 + math.floor(delta * TWO_POW_NEG_17 / root)
+					local idx2 = idx % 8 + 1
+					sha2_H_ext256[224][idx2] = lo2
+					sqrt_hi[idx2], sqrt_lo[idx2] = hi2, lo2 + hi2 * hi_factor
 
-					if idx > 7 then
+					if idx2 > 7 then
 						sqrt_hi, sqrt_lo = sha2_H_ext512_hi[384], sha2_H_ext512_lo[384]
 					end
 				end
 
-				idx = idx + 1
+				idx += 1
 				sha2_K_hi[idx], sha2_K_lo[idx] = hi, lo % K_lo_modulo + hi * hi_factor
 				break
 			end
@@ -700,7 +687,7 @@ for width = 224, 256, 32 do
 		end
 	end
 
-	sha512_feed_128(H_lo, H_hi, "SHA-512/" .. tostring(width) .. "\128" .. string.rep("\0", 115) .. "\88", 0, 128)
+	sha512_feed_128(H_lo, H_hi, "SHA-512/" .. tostring(width) .. "\128" .. string.rep("\0", 115) .. "88", 0, 128)
 	sha2_H_ext512_lo[width] = H_lo
 	sha2_H_ext512_hi[width] = H_hi
 end
@@ -727,7 +714,7 @@ do
 		local lo, m = 0, nil
 		for _ = 1, 6 do
 			m = m and m * m * 2 or 1
-			lo = lo + next_bit() * m
+			lo += next_bit() * m
 		end
 
 		local hi = next_bit() * m
@@ -749,7 +736,7 @@ local function sha256ext(width, message)
 		if message_part then
 			local partLength = #message_part
 			if tail then
-				length = length + partLength
+				length += partLength
 				local offs = 0
 				if tail ~= "" and #tail + partLength >= 64 then
 					offs = 64 - #tail
@@ -760,7 +747,7 @@ local function sha256ext(width, message)
 				local size = partLength - offs
 				local size_tail = size % 64
 				sha256_feed_64(H, message_part, offs, size - size_tail)
-				tail = tail .. string.sub(message_part, partLength + 1 - size_tail)
+				tail ..= string.sub(message_part, partLength + 1 - size_tail)
 				return partial
 			else
 				error("Adding more chunks is not allowed after receiving the result", 2)
@@ -776,9 +763,9 @@ local function sha256ext(width, message)
 				-- Assuming user data length is shorter than (TWO_POW_53)-9 bytes
 				-- Anyway, it looks very unrealistic that someone would spend more than a year of calculations to process TWO_POW_53 bytes of data by using this Lua script :-)
 				-- TWO_POW_53 bytes = TWO_POW_56 bits, so "bit-counter" fits in 7 bytes
-				length = length * (8 / TWO56_POW_7) -- convert "byte-counter" to "bit-counter" and move decimal point to the left
+				length *= (8 / TWO56_POW_7) -- convert "byte-counter" to "bit-counter" and move decimal point to the left
 				for j = 4, 10 do
-					length = length % 1 * 256
+					length %= 1 * 256
 					final_blocks[j] = string.char(math.floor(length))
 				end
 
@@ -807,7 +794,6 @@ local function sha256ext(width, message)
 end
 
 local function sha512ext(width, message)
-
 	-- Create an instance (private objects for current calculation)
 	local length, tail, H_lo, H_hi = 0.0, "", table.pack(table.unpack(sha2_H_ext512_lo[width])), not HEX64 and table.pack(table.unpack(sha2_H_ext512_hi[width]))
 
@@ -815,7 +801,7 @@ local function sha512ext(width, message)
 		if message_part then
 			local partLength = #message_part
 			if tail then
-				length = length + partLength
+				length += partLength
 				local offs = 0
 				if tail ~= "" and #tail + partLength >= 128 then
 					offs = 128 - #tail
@@ -826,7 +812,7 @@ local function sha512ext(width, message)
 				local size = partLength - offs
 				local size_tail = size % 128
 				sha512_feed_128(H_lo, H_hi, message_part, offs, size - size_tail)
-				tail = tail .. string.sub(message_part, partLength + 1 - size_tail)
+				tail ..= string.sub(message_part, partLength + 1 - size_tail)
 				return partial
 			else
 				error("Adding more chunks is not allowed after receiving the result", 2)
@@ -841,9 +827,9 @@ local function sha512ext(width, message)
 				tail = nil
 				-- Assuming user data length is shorter than (TWO_POW_53)-17 bytes
 				-- TWO_POW_53 bytes = TWO_POW_56 bits, so "bit-counter" fits in 7 bytes
-				length = length * (8 / TWO56_POW_7) -- convert "byte-counter" to "bit-counter" and move floating point to the left
+				length *= (8 / TWO56_POW_7) -- convert "byte-counter" to "bit-counter" and move floating point to the left
 				for j = 4, 10 do
-					length = length % 1 * 256
+					length %= 1 * 256
 					final_blocks[j] = string.char(math.floor(length))
 				end
 
@@ -881,7 +867,6 @@ local function sha512ext(width, message)
 end
 
 local function md5(message)
-
 	-- Create an instance (private objects for current calculation)
 	local H, length, tail = table.create(4), 0.0, ""
 	H[1], H[2], H[3], H[4] = md5_sha1_H[1], md5_sha1_H[2], md5_sha1_H[3], md5_sha1_H[4]
@@ -890,7 +875,7 @@ local function md5(message)
 		if message_part then
 			local partLength = #message_part
 			if tail then
-				length = length + partLength
+				length += partLength
 				local offs = 0
 				if tail ~= "" and #tail + partLength >= 64 then
 					offs = 64 - #tail
@@ -901,7 +886,7 @@ local function md5(message)
 				local size = partLength - offs
 				local size_tail = size % 64
 				md5_feed_64(H, message_part, offs, size - size_tail)
-				tail = tail .. string.sub(message_part, partLength + 1 - size_tail)
+				tail ..= string.sub(message_part, partLength + 1 - size_tail)
 				return partial
 			else
 				error("Adding more chunks is not allowed after receiving the result", 2)
@@ -914,7 +899,7 @@ local function md5(message)
 				final_blocks[3] = string.rep("\0", (-9 - length) % 64)
 
 				tail = nil
-				length = length * 8 -- convert "byte-counter" to "bit-counter"
+				length *= 8 -- convert "byte-counter" to "bit-counter"
 				for j = 4, 11 do
 					local low_byte = length % 256
 					final_blocks[j] = string.char(low_byte)
@@ -952,7 +937,7 @@ local function sha1(message)
 		if message_part then
 			local partLength = #message_part
 			if tail then
-				length = length + partLength
+				length += partLength
 				local offs = 0
 				if tail ~= "" and #tail + partLength >= 64 then
 					offs = 64 - #tail
@@ -963,7 +948,7 @@ local function sha1(message)
 				local size = partLength - offs
 				local size_tail = size % 64
 				sha1_feed_64(H, message_part, offs, size - size_tail)
-				tail = tail .. string.sub(message_part, partLength + 1 - size_tail)
+				tail ..= string.sub(message_part, partLength + 1 - size_tail)
 				return partial
 			else
 				error("Adding more chunks is not allowed after receiving the result", 2)
@@ -978,9 +963,9 @@ local function sha1(message)
 				tail = nil
 				-- Assuming user data length is shorter than (TWO_POW_53)-9 bytes
 				-- TWO_POW_53 bytes = TWO_POW_56 bits, so "bit-counter" fits in 7 bytes
-				length = length * (8 / TWO56_POW_7) -- convert "byte-counter" to "bit-counter" and move decimal point to the left
+				length *= (8 / TWO56_POW_7) -- convert "byte-counter" to "bit-counter" and move decimal point to the left
 				for j = 4, 10 do
-					length = length % 1 * 256
+					length %= 1 * 256
 					final_blocks[j] = string.char(math.floor(length))
 				end
 
@@ -1047,7 +1032,7 @@ local function keccak(block_size_in_bytes, digest_size_in_bytes, is_SHAKE, messa
 				local size = partLength - offs
 				local size_tail = size % block_size_in_bytes
 				keccak_feed(lanes_lo, lanes_hi, message_part, offs, size - size_tail, block_size_in_bytes)
-				tail = tail .. string.sub(message_part, partLength + 1 - size_tail)
+				tail ..= string.sub(message_part, partLength + 1 - size_tail)
 				return partial
 			else
 				error("Adding more chunks is not allowed after receiving the result", 2)
@@ -1056,7 +1041,7 @@ local function keccak(block_size_in_bytes, digest_size_in_bytes, is_SHAKE, messa
 			if tail then
 				-- append the following bits to the message: for usual SHA3: 011(0*)1, for SHAKE: 11111(0*)1
 				local gap_start = is_SHAKE and 31 or 6
-				tail = tail .. (#tail + 1 == block_size_in_bytes and string.char(gap_start + 128) or string.char(gap_start) .. string.rep("\0", (-2 - #tail) % block_size_in_bytes) .. "\128")
+				tail ..= (#tail + 1 == block_size_in_bytes and string.char(gap_start + 128) or string.char(gap_start) .. string.rep("\0", (-2 - #tail) % block_size_in_bytes) .. "\128")
 				keccak_feed(lanes_lo, lanes_hi, tail, 0, #tail, block_size_in_bytes)
 				tail = nil
 
@@ -1097,9 +1082,9 @@ local function keccak(block_size_in_bytes, digest_size_in_bytes, is_SHAKE, messa
 					if bytes_needed <= last_part_size then
 						last_part_size = last_part_size - bytes_needed
 						local part_size_in_nibbles = bytes_needed * 2
-						local result = string.sub(last_part, 1, part_size_in_nibbles)
+						local new_result = string.sub(last_part, 1, part_size_in_nibbles)
 						last_part = string.sub(last_part, part_size_in_nibbles + 1)
-						return result
+						return new_result
 					end
 
 					local parts_qty = 0
@@ -1133,7 +1118,6 @@ local function keccak(block_size_in_bytes, digest_size_in_bytes, is_SHAKE, messa
 				else
 					result = get_next_part_of_digest(digest_size_in_bytes)
 				end
-
 			end
 
 			return result
@@ -1159,13 +1143,19 @@ local function hex2bin(hex_string)
 end
 
 local base64_symbols = {
-	["+"] = 62, ["-"] = 62, [62] = "+";
-	["/"] = 63, ["_"] = 63, [63] = "/";
-	["="] = -1, ["."] = -1, [-1] = "=";
+	["+"] = 62,
+	["-"] = 62,
+	[62] = "+",
+	["/"] = 63,
+	["_"] = 63,
+	[63] = "/",
+	["="] = -1,
+	["."] = -1,
+	[-1] = "=",
 }
 
 local symbol_index = 0
-for j, pair in ipairs{"AZ", "az", "09"} do
+for _, pair in ipairs({"AZ", "az", "09"}) do
 	for ascii = string.byte(pair), string.byte(pair, 2) do
 		local ch = string.char(ascii)
 		base64_symbols[ch] = symbol_index
@@ -1179,13 +1169,9 @@ local function bin2base64(binary_string)
 	local length = 0
 
 	for pos = 1, #binary_string, 3 do
-		local c1, c2, c3, c4 = string.byte(string.sub(binary_string, pos, pos + 2) .. '\0', 1, -1)
+		local c1, c2, c3, c4 = string.byte(string.sub(binary_string, pos, pos + 2) .. "\0", 1, -1)
 		length = length + 1
-		result[length] =
-			base64_symbols[math.floor(c1 / 4)] ..
-			base64_symbols[c1 % 4 * 16 + math.floor(c2 / 16)] ..
-			base64_symbols[c3 and c2 % 16 * 4 + math.floor(c3 / 64) or -1] ..
-			base64_symbols[c4 and c3 % 64 or -1]
+		result[length] = base64_symbols[math.floor(c1 / 4)] .. base64_symbols[c1 % 4 * 16 + math.floor(c2 / 16)] .. base64_symbols[c3 and c2 % 16 * 4 + math.floor(c3 / 64) or -1] .. base64_symbols[c4 and c3 % 64 or -1]
 	end
 
 	return table.concat(result)
@@ -1207,7 +1193,7 @@ local function base642bin(base64_string)
 			local c1 = result[-1] * 4 + math.floor(result[-2] / 16)
 			local c2 = (result[-2] % 16) * 16 + math.floor(result[-3] / 4)
 			local c3 = (result[-3] % 4) * 64 + code
-			result[#result + 1] = string.sub(string.char(c1, c2, c3), 1, chars_qty)
+			table.insert(result, string.sub(string.char(c1, c2, c3), 1, chars_qty))
 		end
 	end
 
@@ -1257,7 +1243,7 @@ local function hmac(hash_func, key, message, AsBinary)
 
 	if message then
 		-- Actually perform calculations and return the HMAC of a message
-		local FinalMessage = partial(message)()
+		local FinalMessage: string = partial(message)()
 		return AsBinary and (string.gsub(FinalMessage, "%x%x", BinaryStringMap)) or FinalMessage
 	else
 		-- Return function for chunk-by-chunk loading of a message
@@ -1272,60 +1258,60 @@ local sha = {
 	-- SHA2 hash functions:
 	sha224 = function(message)
 		return sha256ext(224, message)
-	end;
+	end,
 
 	sha256 = function(message)
 		return sha256ext(256, message)
-	end;
+	end,
 
 	sha512_224 = function(message)
 		return sha512ext(224, message)
-	end;
+	end,
 
 	sha512_256 = function(message)
 		return sha512ext(256, message)
-	end;
+	end,
 
 	sha384 = function(message)
 		return sha512ext(384, message)
-	end;
+	end,
 
 	sha512 = function(message)
 		return sha512ext(512, message)
-	end;
+	end,
 
 	-- SHA3 hash functions:
 	sha3_224 = function(message)
 		return keccak((1600 - 2 * 224) / 8, 224 / 8, false, message)
-	end;
+	end,
 
 	sha3_256 = function(message)
 		return keccak((1600 - 2 * 256) / 8, 256 / 8, false, message)
-	end;
+	end,
 
 	sha3_384 = function(message)
 		return keccak((1600 - 2 * 384) / 8, 384 / 8, false, message)
-	end;
+	end,
 
 	sha3_512 = function(message)
 		return keccak((1600 - 2 * 512) / 8, 512 / 8, false, message)
-	end;
+	end,
 
 	shake128 = function(message, digest_size_in_bytes)
 		return keccak((1600 - 2 * 128) / 8, digest_size_in_bytes, true, message)
-	end;
+	end,
 
 	shake256 = function(message, digest_size_in_bytes)
 		return keccak((1600 - 2 * 256) / 8, digest_size_in_bytes, true, message)
-	end;
+	end,
 
 	-- misc utilities:
-	hmac = hmac; -- HMAC(hash_func, key, message) is applicable to any hash function from this module except SHAKE*
-	hex_to_bin = hex2bin; -- converts hexadecimal representation to binary string
-	base64_to_bin = base642bin; -- converts base64 representation to binary string
-	bin_to_base64 = bin2base64;
-	base64_encode = Base64.Encode;
-	base64_decode = Base64.Decode;
+	hmac = hmac, -- HMAC(hash_func, key, message) is applicable to any hash function from this module except SHAKE*
+	hex_to_bin = hex2bin, -- converts hexadecimal representation to binary string
+	base64_to_bin = base642bin, -- converts base64 representation to binary string
+	bin_to_base64 = bin2base64,
+	base64_encode = Base64.Encode,
+	base64_decode = Base64.Decode,
 	-- converts binary string to base64 representation
 }
 

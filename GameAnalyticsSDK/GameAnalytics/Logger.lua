@@ -1,96 +1,55 @@
 local RunService = game:GetService("RunService")
---local GameAnalyticsSendMessage
+local Scheduler = require(script.Parent.Scheduler)
+local Scheduler_FastSpawn = Scheduler.FastSpawn
 
-local logger = {
+local Logger = {
 	_infoLogEnabled = false,
 	_infoLogAdvancedEnabled = false,
 	_debugEnabled = RunService:IsStudio(),
 }
 
-function logger:setDebugLog(enabled)
+function Logger:setDebugLog(enabled)
 	self._debugEnabled = enabled
 end
 
-function logger:setInfoLog(enabled)
+function Logger:setInfoLog(enabled)
 	self._infoLogEnabled = enabled
 end
 
-function logger:setVerboseLog(enabled)
+function Logger:setVerboseLog(enabled)
 	self._infoLogAdvancedEnabled = enabled
 end
 
-function logger:i(format)
+function Logger:information(format)
 	if not self._infoLogEnabled then
 		return
 	end
 
-	local m = "Info/GameAnalytics: " .. format
-	print(m)
---    GameAnalyticsSendMessage = GameAnalyticsSendMessage or game:GetService("ReplicatedStorage"):WaitForChild("GameAnalyticsSendMessage")
---    GameAnalyticsSendMessage:FireAllClients({
---        Text = m,
---        Font = Enum.Font.Arial,
---        Color = Color3.new(255, 255, 255),
---        FontSize = Enum.FontSize.Size96
---    })
+	print("Info/GameAnalytics: " .. format)
 end
 
-function logger:w(format)
-	local m = "Warning/GameAnalytics: " .. format
-	warn(m)
---    GameAnalyticsSendMessage = GameAnalyticsSendMessage or game:GetService("ReplicatedStorage"):WaitForChild("GameAnalyticsSendMessage")
---    GameAnalyticsSendMessage:FireAllClients({
---        Text = m,
---        Font = Enum.Font.Arial,
---        Color = Color3.new(255, 255, 0),
---        FontSize = Enum.FontSize.Size96
---    })
+function Logger:warning(format)
+	warn("Warning/GameAnalytics: " .. format)
 end
 
-function logger:e(format)
-	spawn(function()
-		local m = "Error/GameAnalytics: " .. format
-		error(m, 0)
---        GameAnalyticsSendMessage = GameAnalyticsSendMessage or game:GetService("ReplicatedStorage"):WaitForChild("GameAnalyticsSendMessage")
---        GameAnalyticsSendMessage:FireAllClients({
---            Text = m,
---            Font = Enum.Font.Arial,
---            Color = Color3.new(255, 0, 0),
---            FontSize = Enum.FontSize.Size96
---        })
-	end)
+function Logger:error(format)
+	Scheduler_FastSpawn(error, "Error/GameAnalytics: " .. format, 0)
 end
 
-function logger:d(format)
+function Logger:debug(format)
 	if not self._debugEnabled then
 		return
 	end
 
-	local m = "Debug/GameAnalytics: " .. format
-	print(m)
---    GameAnalyticsSendMessage = GameAnalyticsSendMessage or game:GetService("ReplicatedStorage"):WaitForChild("GameAnalyticsSendMessage")
---    GameAnalyticsSendMessage:FireAllClients({
---        Text = m,
---        Font = Enum.Font.Arial,
---        Color = Color3.new(255, 255, 255),
---        FontSize = Enum.FontSize.Size96
---    })
+	print("Debug/GameAnalytics: " .. format)
 end
 
-function logger:ii(format)
+function Logger:verboseInformation(format)
 	if not self._infoLogAdvancedEnabled then
 		return
 	end
 
-	local m = "Verbose/GameAnalytics: " .. format
-	print(m)
---    GameAnalyticsSendMessage = GameAnalyticsSendMessage or game:GetService("ReplicatedStorage"):WaitForChild("GameAnalyticsSendMessage")
---    GameAnalyticsSendMessage:FireAllClients({
---        Text = m,
---        Font = Enum.Font.Arial,
---        Color = Color3.new(255, 255, 255),
---        FontSize = Enum.FontSize.Size96
---    })
+	print("Verbose/GameAnalytics: " .. format)
 end
 
-return logger
+return Logger
