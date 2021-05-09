@@ -260,16 +260,16 @@ function Events:addSessionStartEvent(playerId, teleportData)
 	if teleportData then
 		playerData.Sessions = teleportData.Sessions
 	else
-		local eventDict = {category = CATEGORY_SESSION_START}
+		local eventData = {category = CATEGORY_SESSION_START}
 
 		-- Increment session number and persist
 		playerData.Sessions += 1
 
 		-- Add custom dimensions
-		addDimensionsToEvent(playerId, eventDict)
+		addDimensionsToEvent(playerId, eventData)
 
 		-- Add to store
-		addEventToStore(playerId, eventDict)
+		addEventToStore(playerId, eventData)
 		Logger:information("Add SESSION START event")
 		processEvents()
 	end
@@ -293,16 +293,16 @@ function Events:addSessionEndEvent(playerId)
 	end
 
 	-- Event specific data
-	local eventDict = {
+	local eventData = {
 		category = CATEGORY_SESSION_END,
 		length = sessionLength,
 	}
 
 	-- Add custom dimensions
-	addDimensionsToEvent(playerId, eventDict)
+	addDimensionsToEvent(playerId, eventData)
 
 	-- Add to store
-	addEventToStore(playerId, eventDict)
+	addEventToStore(playerId, eventData)
 	playerData.SessionStart = 0
 
 	Logger:information("Add SESSION END event.")
@@ -316,14 +316,12 @@ function Events:addBusinessEvent(playerId, currency, amount, itemType, itemId, c
 		return
 	end
 
-	-- Create empty eventData
-
 	-- Increment transaction number and persist
 	local playerData = Store.GetPlayerDataFromCache(playerId)
 	playerData.Transactions += 1
 
 	-- Required
-	local eventDict = {
+	local eventData = {
 		amount = amount,
 		cart_type = nil,
 		category = CATEGORY_BUSINESS,
@@ -334,15 +332,15 @@ function Events:addBusinessEvent(playerId, currency, amount, itemType, itemId, c
 
 	-- Optional
 	if not Utilities.isStringNullOrEmpty(cartType) then
-		eventDict.cart_type = cartType
+		eventData.cart_type = cartType
 	end
 
 	-- Add custom dimensions
-	addDimensionsToEvent(playerId, eventDict)
+	addDimensionsToEvent(playerId, eventData)
 	Logger:information("Add BUSINESS event: {currency:" .. currency .. ", amount:" .. tostring(amount) .. ", itemType:" .. itemType .. ", itemId:" .. itemId .. ", cartType:" .. cartType .. "}")
 
 	-- Send to store
-	addEventToStore(playerId, eventDict)
+	addEventToStore(playerId, eventData)
 end
 
 function Events:addResourceEvent(playerId, flowType, currency, amount, itemType, itemId)
@@ -357,23 +355,21 @@ function Events:addResourceEvent(playerId, flowType, currency, amount, itemType,
 		amount = -1 * amount
 	end
 
-	-- Create empty eventData
-
 	-- insert event specific values
 	local flowTypeString = GAResourceFlowType[flowType]
-	local eventDict = {
+	local eventData = {
 		amount = amount,
 		category = CATEGORY_RESOURCE,
 		event_id = flowTypeString .. ":" .. currency .. ":" .. itemType .. ":" .. itemId,
 	}
 
 	-- Add custom dimensions
-	addDimensionsToEvent(playerId, eventDict)
+	addDimensionsToEvent(playerId, eventData)
 
 	Logger:information("Add RESOURCE event: {currency:" .. currency .. ", amount:" .. tostring(amount) .. ", itemType:" .. itemType .. ", itemId:" .. itemId .. "}")
 
 	-- Send to store
-	addEventToStore(playerId, eventDict)
+	addEventToStore(playerId, eventData)
 end
 
 function Events:addProgressionEvent(playerId, progressionStatus, progression01, progression02, progression03, score)
@@ -394,7 +390,7 @@ function Events:addProgressionEvent(playerId, progressionStatus, progression01, 
 	end
 
 	local statusString = GAProgressionStatus[progressionStatus]
-	local eventDict = {
+	local eventData = {
 		attempt_num = nil,
 		category = CATEGORY_PROGRESSION,
 		event_id = statusString .. ":" .. progressionIdentifier,
@@ -402,38 +398,38 @@ function Events:addProgressionEvent(playerId, progressionStatus, progression01, 
 	}
 
 	-- Attempt
-	local attempt_num = 0
+	local attemptNumber = 0
 
 	-- Add score if specified and status is not start
 	if score ~= nil and progressionStatus ~= GAProgressionStatus.Start then
-		eventDict.score = score
+		eventData.score = score
 	end
 
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local playerData = Store.GetPlayerDataFromCache(playerId)
 
 	-- Count attempts on each progression fail and persist
 	if progressionStatus == GAProgressionStatus.Fail then
 		-- Increment attempt number
-		local progressionTries = PlayerData.ProgressionTries[progressionIdentifier] or 0
-		PlayerData.ProgressionTries[progressionIdentifier] = progressionTries + 1
+		local progressionTries = playerData.ProgressionTries[progressionIdentifier] or 0
+		playerData.ProgressionTries[progressionIdentifier] = progressionTries + 1
 	end
 
 	-- increment and add attempt_num on complete and delete persisted
 	if progressionStatus == GAProgressionStatus.Complete then
 		-- Increment attempt number
-		local progressionTries = PlayerData.ProgressionTries[progressionIdentifier] or 0
-		PlayerData.ProgressionTries[progressionIdentifier] = progressionTries + 1
+		local progressionTries = playerData.ProgressionTries[progressionIdentifier] or 0
+		playerData.ProgressionTries[progressionIdentifier] = progressionTries + 1
 
 		-- Add to event
-		attempt_num = PlayerData.ProgressionTries[progressionIdentifier]
-		eventDict.attempt_num = attempt_num
+		attemptNumber = playerData.ProgressionTries[progressionIdentifier]
+		eventData.attempt_num = attemptNumber
 
 		-- Clear
-		PlayerData.ProgressionTries[progressionIdentifier] = 0
+		playerData.ProgressionTries[progressionIdentifier] = 0
 	end
 
 	-- Add custom dimensions
-	addDimensionsToEvent(playerId, eventDict)
+	addDimensionsToEvent(playerId, eventData)
 
 	local progression02String = ""
 	if not Utilities.isStringNullOrEmpty(progression02) then
@@ -445,10 +441,10 @@ function Events:addProgressionEvent(playerId, progressionStatus, progression01, 
 		progression03String = progression03
 	end
 
-	Logger:information("Add PROGRESSION event: {status:" .. statusString .. ", progression01:" .. progression01 .. ", progression02:" .. progression02String .. ", progression03:" .. progression03String .. ", score:" .. tostring(score) .. ", attempt:" .. tostring(attempt_num) .. "}")
+	Logger:information("Add PROGRESSION event: {status:" .. statusString .. ", progression01:" .. progression01 .. ", progression02:" .. progression02String .. ", progression03:" .. progression03String .. ", score:" .. tostring(score) .. ", attempt:" .. tostring(attemptNumber) .. "}")
 
 	-- Send to store
-	addEventToStore(playerId, eventDict)
+	addEventToStore(playerId, eventData)
 end
 
 function Events:addDesignEvent(playerId, eventId, value)
@@ -471,7 +467,6 @@ function Events:addDesignEvent(playerId, eventId, value)
 
 	-- Add custom dimensions
 	addDimensionsToEvent(playerId, eventData)
-
 	Logger:information("Add DESIGN event: {eventId:" .. eventId .. ", value:" .. tostring(value) .. "}")
 
 	-- Send to store
