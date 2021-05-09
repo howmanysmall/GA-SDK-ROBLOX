@@ -36,7 +36,7 @@ local function addDimensionsToEvent(playerId, eventData)
 		return
 	end
 
-	local playerData = Store.GetPlayerDataFromCache(playerId)
+	local playerData = Store.getPlayerDataFromCache(playerId)
 
 	-- add to dict (if not nil)
 	if playerData and playerData.CurrentCustomDimension01 and #playerData.CurrentCustomDimension01 > 0 then
@@ -57,7 +57,7 @@ local function getClientTsAdjusted(playerId)
 		return os.time()
 	end
 
-	local playerData = Store.GetPlayerDataFromCache(playerId)
+	local playerData = Store.getPlayerDataFromCache(playerId)
 	local clientTs = os.time()
 	local clientTsAdjustedInteger = clientTs + playerData.ClientServerTimeOffset
 	if Validation.validateClientTs(clientTsAdjustedInteger) then
@@ -73,7 +73,7 @@ local function getEventAnnotations(playerId)
 
 	if playerId then
 		id = playerId
-		playerData = Store.GetPlayerDataFromCache(playerId)
+		playerData = Store.getPlayerDataFromCache(playerId)
 	else
 		id = "DummyId"
 		playerData = {
@@ -256,7 +256,7 @@ function Events:setAvailableResourceItemTypes(availableResourceItemTypes)
 end
 
 function Events:addSessionStartEvent(playerId, teleportData)
-	local playerData = Store.GetPlayerDataFromCache(playerId)
+	local playerData = Store.getPlayerDataFromCache(playerId)
 	if teleportData then
 		playerData.Sessions = teleportData.Sessions
 	else
@@ -276,7 +276,7 @@ function Events:addSessionStartEvent(playerId, teleportData)
 end
 
 function Events:addSessionEndEvent(playerId)
-	local playerData = Store.GetPlayerDataFromCache(playerId)
+	local playerData = Store.getPlayerDataFromCache(playerId)
 	local sessionStartTimestamp = playerData.SessionStart
 	local clientTimestampAdjusted = getClientTsAdjusted(playerId)
 	local sessionLength = 0
@@ -317,7 +317,7 @@ function Events:addBusinessEvent(playerId, currency, amount, itemType, itemId, c
 	end
 
 	-- Increment transaction number and persist
-	local playerData = Store.GetPlayerDataFromCache(playerId)
+	local playerData = Store.getPlayerDataFromCache(playerId)
 	playerData.Transactions += 1
 
 	-- Required
@@ -405,7 +405,7 @@ function Events:addProgressionEvent(playerId, progressionStatus, progression01, 
 		eventData.score = score
 	end
 
-	local playerData = Store.GetPlayerDataFromCache(playerId)
+	local playerData = Store.getPlayerDataFromCache(playerId)
 
 	-- Count attempts on each progression fail and persist
 	if progressionStatus == GAProgressionStatus.Fail then

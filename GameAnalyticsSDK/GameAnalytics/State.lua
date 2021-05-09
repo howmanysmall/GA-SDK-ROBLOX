@@ -21,7 +21,7 @@ local State = {
 local GameAnalyticsRemoteConfigs
 
 local function getClientTsAdjusted(playerId)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	if not PlayerData then
 		return os.time()
 	end
@@ -36,7 +36,7 @@ local function getClientTsAdjusted(playerId)
 end
 
 local function populateConfigurations(player)
-	local PlayerData = Store.GetPlayerDataFromCache(player.UserId)
+	local PlayerData = Store.getPlayerDataFromCache(player.UserId)
 	local sdkConfig = PlayerData.SdkConfig
 
 	if sdkConfig.configs then
@@ -65,7 +65,7 @@ local function populateConfigurations(player)
 end
 
 function State:sessionIsStarted(playerId)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	if not PlayerData then
 		return false
 	end
@@ -74,7 +74,7 @@ function State:sessionIsStarted(playerId)
 end
 
 function State:isEnabled(playerId)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	if not PlayerData or not PlayerData.InitAuthorized then
 		return false
 	else
@@ -83,7 +83,7 @@ function State:isEnabled(playerId)
 end
 
 function State:validateAndFixCurrentDimensions(playerId)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 
 	-- validate that there are no current dimension01 not in list
 	if not Validation.validateDimension(self._availableCustomDimensions01, PlayerData.CurrentCustomDimension01) then
@@ -142,17 +142,17 @@ function State:isEventSubmissionEnabled()
 end
 
 function State:setCustomDimension01(playerId, dimension)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	PlayerData.CurrentCustomDimension01 = dimension
 end
 
 function State:setCustomDimension02(playerId, dimension)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	PlayerData.CurrentCustomDimension02 = dimension
 end
 
 function State:setCustomDimension03(playerId, dimension)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	PlayerData.CurrentCustomDimension03 = dimension
 end
 
@@ -161,7 +161,7 @@ function State:startNewSession(player, teleportData)
 		Logger:information("Starting a new session.")
 	end
 
-	local PlayerData = Store.GetPlayerDataFromCache(player.UserId)
+	local PlayerData = Store.getPlayerDataFromCache(player.UserId)
 
 	-- make sure the current custom dimensions are valid
 	self:validateAndFixCurrentDimensions(player.UserId)
@@ -252,17 +252,17 @@ function State:endSession(playerId)
 end
 
 function State:getRemoteConfigsStringValue(playerId, key, defaultValue)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	return PlayerData.Configurations[key] or defaultValue
 end
 
 function State:isRemoteConfigsReady(playerId)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	return PlayerData.RemoteConfigsIsReady
 end
 
 function State:getRemoteConfigsContentAsString(playerId)
-	local PlayerData = Store.GetPlayerDataFromCache(playerId)
+	local PlayerData = Store.getPlayerDataFromCache(playerId)
 	return HttpService:JSONEncode(PlayerData.Configurations)
 end
 

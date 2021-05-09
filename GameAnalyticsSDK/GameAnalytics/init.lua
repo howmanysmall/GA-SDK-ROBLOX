@@ -311,14 +311,14 @@ function GameAnalytics:addBusinessEvent(playerId: integer, options: BusinessEven
 		if itemType == "Gamepass" and cartType ~= "Website" then
 			local player = Players:GetPlayerByUserId(playerId)
 			if player then
-				local playerData = Store.GetPlayerData(player)
+				local playerData = Store.getPlayerData(player)
 				if not playerData.OwnedGamepasses then
 					playerData.OwnedGamepasses = {}
 				end
 
 				table.insert(playerData.OwnedGamepasses, gamepassId)
 				Store.PlayerCache[playerId] = playerData
-				Store.SavePlayerData(player)
+				Store.savePlayerData(player)
 			end
 		end
 	end)
@@ -538,7 +538,7 @@ end
 function GameAnalytics:addGameAnalyticsTeleportData(playerIds: Array<integer>, teleportData: Dictionary<any>)
 	local gameAnalyticsTeleportData = {}
 	for _, playerId in ipairs(playerIds) do
-		local playerData = Store.GetPlayerDataFromCache(playerId)
+		local playerData = Store.getPlayerDataFromCache(playerId)
 		playerData.PlayerTeleporting = true
 		local data = {
 			SessionID = playerData.SessionID,
@@ -567,21 +567,19 @@ function GameAnalytics:getRemoteConfigsContentAsString(playerId: integer)
 	return State:getRemoteConfigsContentAsString(playerId)
 end
 
--- EPIC WIN
-
-function GameAnalytics:PlayerJoined(player: Player)
+function GameAnalytics:playerJoined(player: Player)
 	local joinData = player:GetJoinData()
 	local teleportData = joinData.TeleportData
 	local gameAnalyticsData = nil
 
 	--Variables
-	local playerData = Store.GetPlayerData(player)
+	local playerData = Store.getPlayerData(player)
 
 	if teleportData then
 		gameAnalyticsData = teleportData.gameanalyticsData and teleportData.gameanalyticsData[tostring(player.UserId)]
 	end
 
-	local cachedPlayerData = Store.GetPlayerDataFromCache(player.UserId)
+	local cachedPlayerData = Store.getPlayerDataFromCache(player.UserId)
 	if cachedPlayerData then
 		if gameAnalyticsData then
 			cachedPlayerData.SessionID = gameAnalyticsData.SessionID
@@ -660,7 +658,7 @@ function GameAnalytics:PlayerJoined(player: Player)
 
 			-- Player's data is now up to date. gamepass purchases on website can now be tracked in future visits
 			Store.PlayerCache[player.UserId] = playerData
-			Store.SavePlayerData(player)
+			Store.savePlayerData(player)
 		else
 			-- build a list of the game passes a user owns
 			local currentlyOwned = {}
@@ -705,7 +703,7 @@ function GameAnalytics:PlayerJoined(player: Player)
 			end
 
 			Store.PlayerCache[player.UserId] = playerData
-			Store.SavePlayerData(player)
+			Store.savePlayerData(player)
 		end
 	end
 
@@ -721,11 +719,11 @@ function GameAnalytics:PlayerJoined(player: Player)
 	end
 end
 
-function GameAnalytics:PlayerRemoved(player: Player)
+function GameAnalytics:playerRemoved(player: Player)
 	-- Save
-	Store.SavePlayerData(player)
+	Store.savePlayerData(player)
 
-	local playerData = Store.GetPlayerDataFromCache(player.UserId)
+	local playerData = Store.getPlayerDataFromCache(player.UserId)
 	if playerData then
 		if not playerData.PlayerTeleporting then
 			self:endSession(player.UserId)
@@ -736,10 +734,10 @@ function GameAnalytics:PlayerRemoved(player: Player)
 end
 
 function GameAnalytics:isPlayerReady(playerId: integer): boolean
-	return not not Store.GetPlayerDataFromCache(playerId)
+	return not not Store.getPlayerDataFromCache(playerId)
 end
 
-function GameAnalytics:ProcessReceiptCallback(information)
+function GameAnalytics:processReceiptCallback(information)
 	MarketplacePromise.promiseProductInfo(information.ProductId, Enum.InfoType.Product):andThen(function(productInfo)
 		self:addBusinessEvent(information.PlayerId, {
 			amount = information.CurrencySpent,
@@ -750,7 +748,7 @@ function GameAnalytics:ProcessReceiptCallback(information)
 end
 
 --customGamepassInfo argument to optinaly provide our own name or price
-function GameAnalytics:GamepassPurchased(player: Player, gamePassId: integer, customGamepassInfo)
+function GameAnalytics:gamepassPurchased(player: Player, gamePassId: integer, customGamepassInfo)
 	MarketplacePromise.promiseProductInfo(gamePassId, Enum.InfoType.GamePass):andThen(function(productInfo)
 		local amount = 0
 		local itemId = "GamePass"
@@ -774,6 +772,137 @@ end
 local requiredInitializationOptions = {"gameKey", "secretKey"}
 
 function GameAnalytics:initialize(options: InitializeOptions)
+	-- This is so we don't do work on load.
+	Scheduler.FastSpawn(function()
+		if not ReplicatedStorage:FindFirstChild("GameAnalyticsRemoteConfigs") then
+			-- Create
+			local remoteEvent = Instance.new("RemoteEvent")
+			remoteEvent.Name = "GameAnalyticsRemoteConfigs"
+			remoteEvent.Parent = ReplicatedStorage
+		end
+
+		if not ReplicatedStorage:FindFirstChild("OnPlayerReadyEvent") then
+			-- Create
+			local bindableEvent = Instance.new("BindableEvent")
+			bindableEvent.Name = "OnPlayerReadyEvent"
+			bindableEvent.Parent = ReplicatedStorage
+		end
+
+		Scheduler_Spawn(function()
+			local currentHour = math.floor(os.time() / 3600)
+			errorDataStore = Store.getErrorDataStore(currentHour)
+
+			while true do
+				Scheduler_Wait(ONE_HOUR_IN_SECONDS)
+				currentHour = math.floor(os.time() / 3600)
+				errorDataStore = Store.getErrorDataStore(currentHour)
+				errorCountCache = {}
+				errorCountCacheKeys = {}
+			end
+		end)
+
+		Scheduler_Spawn(function()
+			while true do
+				Scheduler_Wait(Store.AutoSaveData)
+				for _, key in ipairs(errorCountCacheKeys) do
+					local errorCount = errorCountCache[key]
+					local step = errorCount.currentCount - errorCount.countInDS
+					errorCountCache[key].countInDS = Store.incrementErrorCount(errorDataStore, key, step)
+					errorCountCache[key].currentCount = errorCountCache[key].countInDS
+				end
+			end
+		end)
+
+		local function errorHandler(message, trace, scriptName, player)
+			local newMessage = scriptName .. ": message=" .. message .. ", trace=" .. trace
+			if #newMessage > 8192 then
+				newMessage = string.sub(newMessage, 1, 8192)
+			end
+
+			local userId = nil
+			if player then
+				userId = player.UserId
+				newMessage = string.gsub(newMessage, player.Name, "[LocalPlayer]") -- so we don't flood the same errors with different player names
+			end
+
+			local key = newMessage
+			if #key > 50 then
+				key = string.sub(key, 1, 50)
+			end
+
+			if errorCountCache[key] == nil then
+				table.insert(errorCountCacheKeys, key)
+				errorCountCache[key] = {
+					countInDS = 0,
+					currentCount = 0,
+				}
+			end
+
+			-- don't report error if limit has been exceeded
+			if errorCountCache[key].currentCount > MAX_ERRORS_PER_HOUR then
+				return
+			end
+
+			GameAnalytics:addErrorEvent(userId, {
+				message = newMessage,
+				severity = self.EGAErrorSeverity.error,
+			})
+
+			-- increment error count
+			errorCountCache[key].currentCount += 1
+		end
+
+		local function errorHandlerFromServer(message, trace, erroringScript)
+			-- Validate
+			if not State.ReportErrors or not erroringScript then
+				return
+			end
+
+			local scriptName = nil
+			local success = pcall(function()
+				scriptName = erroringScript:GetFullName() -- CoreGui.RobloxGui.Modules.PlayerList error, can't get name because of security permission
+			end)
+
+			if not success then
+				return
+			end
+
+			return errorHandler(message, trace, scriptName)
+		end
+
+		local function errorHandlerFromClient(message, trace, scriptName, player)
+			-- Validate
+			if not State.ReportErrors then
+				return
+			end
+
+			return errorHandler(message, trace, scriptName, player)
+		end
+
+		-- Error Logging
+		ScriptContext.Error:Connect(errorHandlerFromServer)
+		if not ReplicatedStorage:FindFirstChild("GameAnalyticsError") then
+			-- Create
+			local remoteEvent = Instance.new("RemoteEvent")
+			remoteEvent.Name = "GameAnalyticsError"
+			remoteEvent.Parent = ReplicatedStorage
+		end
+
+		ReplicatedStorage.GameAnalyticsError.OnServerEvent:Connect(function(player, message, trace, scriptName)
+			errorHandlerFromClient(message, trace, scriptName, player)
+		end)
+
+		-- Record Gamepasses.
+		MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, purchased)
+			-- Validate
+			if not State.AutomaticSendBusinessEvents or not purchased then
+				return
+			end
+
+			self:gamepassPurchased(player, gamePassId)
+		end)
+	end)
+
 	Threading:performTaskOnGAThread(function()
 		for _, option in ipairs(requiredInitializationOptions) do
 			if options[option] == nil then
@@ -861,17 +990,17 @@ function GameAnalytics:initialize(options: InitializeOptions)
 
 		-- New Players
 		Players.PlayerAdded:Connect(function(player)
-			self:PlayerJoined(player)
+			self:playerJoined(player)
 		end)
 
 		-- Players leaving
 		Players.PlayerRemoving:Connect(function(player)
-			self:PlayerRemoved(player)
+			self:playerRemoved(player)
 		end)
 
 		-- Fire for players already in game
 		for _, player in ipairs(Players:GetPlayers()) do
-			Scheduler.FastSpawn(self.PlayerJoined, self, player)
+			Scheduler.FastSpawn(self.playerJoined, self, player)
 		end
 
 		for _, queuedFunction in ipairs(initializationQueue) do
@@ -886,132 +1015,40 @@ function GameAnalytics:initialize(options: InitializeOptions)
 	end)
 end
 
-if not ReplicatedStorage:FindFirstChild("GameAnalyticsRemoteConfigs") then
-	-- Create
-	local remoteEvent = Instance.new("RemoteEvent")
-	remoteEvent.Name = "GameAnalyticsRemoteConfigs"
-	remoteEvent.Parent = ReplicatedStorage
-end
-
-if not ReplicatedStorage:FindFirstChild("OnPlayerReadyEvent") then
-	-- Create
-	local bindableEvent = Instance.new("BindableEvent")
-	bindableEvent.Name = "OnPlayerReadyEvent"
-	bindableEvent.Parent = ReplicatedStorage
-end
-
-Scheduler_Spawn(function()
-	local currentHour = math.floor(os.time() / 3600)
-	errorDataStore = Store.GetErrorDataStore(currentHour)
-
-	while true do
-		Scheduler_Wait(ONE_HOUR_IN_SECONDS)
-		currentHour = math.floor(os.time() / 3600)
-		errorDataStore = Store.GetErrorDataStore(currentHour)
-		errorCountCache = {}
-		errorCountCacheKeys = {}
-	end
-end)
-
-Scheduler_Spawn(function()
-	while true do
-		Scheduler_Wait(Store.AutoSaveData)
-		for _, key in ipairs(errorCountCacheKeys) do
-			local errorCount = errorCountCache[key]
-			local step = errorCount.currentCount - errorCount.countInDS
-			errorCountCache[key].countInDS = Store.IncrementErrorCount(errorDataStore, key, step)
-			errorCountCache[key].currentCount = errorCountCache[key].countInDS
-		end
-	end
-end)
-
-local function errorHandler(message, trace, scriptName, player)
-	local newMessage = scriptName .. ": message=" .. message .. ", trace=" .. trace
-	if #newMessage > 8192 then
-		newMessage = string.sub(newMessage, 1, 8192)
-	end
-
-	local userId = nil
-	if player then
-		userId = player.UserId
-		newMessage = string.gsub(newMessage, player.Name, "[LocalPlayer]") -- so we don't flood the same errors with different player names
-	end
-
-	local key = newMessage
-	if #key > 50 then
-		key = string.sub(key, 1, 50)
-	end
-
-	if errorCountCache[key] == nil then
-		table.insert(errorCountCacheKeys, key)
-		errorCountCache[key] = {
-			countInDS = 0,
-			currentCount = 0,
-		}
-	end
-
-	-- don't report error if limit has been exceeded
-	if errorCountCache[key].currentCount > MAX_ERRORS_PER_HOUR then
-		return
-	end
-
-	GameAnalytics:addErrorEvent(userId, {
-		message = newMessage,
-		severity = GameAnalytics.EGAErrorSeverity.error,
-	})
-
-	-- increment error count
-	errorCountCache[key].currentCount += 1
-end
-
-local function errorHandlerFromServer(message, trace, erroringScript)
-	-- Validate
-	if not State.ReportErrors or not erroringScript then
-		return
-	end
-
-	local scriptName = nil
-	local success = pcall(function()
-		scriptName = erroringScript:GetFullName() -- CoreGui.RobloxGui.Modules.PlayerList error, can't get name because of security permission
-	end)
-
-	if not success then
-		return
-	end
-
-	return errorHandler(message, trace, scriptName)
-end
-
-local function errorHandlerFromClient(message, trace, scriptName, player)
-	-- Validate
-	if not State.ReportErrors then
-		return
-	end
-
-	return errorHandler(message, trace, scriptName, player)
-end
-
--- Error Logging
-ScriptContext.Error:Connect(errorHandlerFromServer)
-if not ReplicatedStorage:FindFirstChild("GameAnalyticsError") then
-	-- Create
-	local f = Instance.new("RemoteEvent")
-	f.Name = "GameAnalyticsError"
-	f.Parent = ReplicatedStorage
-end
-
-ReplicatedStorage.GameAnalyticsError.OnServerEvent:Connect(function(player, message, trace, scriptName)
-	errorHandlerFromClient(message, trace, scriptName, player)
-end)
-
--- Record Gamepasses.
-MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, purchased)
-	-- Validate
-	if not State.AutomaticSendBusinessEvents or not purchased then
-		return
-	end
-
-	GameAnalytics:GamepassPurchased(player, gamePassId)
-end)
+GameAnalytics.AddBusinessEvent = GameAnalytics.addBusinessEvent
+GameAnalytics.AddDesignEvent = GameAnalytics.addDesignEvent
+GameAnalytics.AddErrorEvent = GameAnalytics.addErrorEvent
+GameAnalytics.AddGameAnalyticsTeleportData = GameAnalytics.addGameAnalyticsTeleportData
+GameAnalytics.AddProgressionEvent = GameAnalytics.addProgressionEvent
+GameAnalytics.AddResourceEvent = GameAnalytics.addResourceEvent
+GameAnalytics.ConfigureAvailableCustomDimensions01 = GameAnalytics.configureAvailableCustomDimensions01
+GameAnalytics.ConfigureAvailableCustomDimensions02 = GameAnalytics.configureAvailableCustomDimensions02
+GameAnalytics.ConfigureAvailableCustomDimensions03 = GameAnalytics.configureAvailableCustomDimensions03
+GameAnalytics.ConfigureAvailableGamepasses = GameAnalytics.configureAvailableGamepasses
+GameAnalytics.ConfigureAvailableResourceCurrencies = GameAnalytics.configureAvailableResourceCurrencies
+GameAnalytics.ConfigureAvailableResourceItemTypes = GameAnalytics.configureAvailableResourceItemTypes
+GameAnalytics.ConfigureBuild = GameAnalytics.configureBuild
+GameAnalytics.EndSession = GameAnalytics.endSession
+GameAnalytics.FilterForBusinessEvent = GameAnalytics.filterForBusinessEvent
+GameAnalytics.GamepassPurchased = GameAnalytics.gamepassPurchased
+GameAnalytics.GetRemoteConfigsContentAsString = GameAnalytics.getRemoteConfigsContentAsString
+GameAnalytics.GetRemoteConfigsValueAsString = GameAnalytics.getRemoteConfigsValueAsString
+GameAnalytics.Initialize = GameAnalytics.initialize
+GameAnalytics.IsPlayerReady = GameAnalytics.isPlayerReady
+GameAnalytics.IsRemoteConfigsReady = GameAnalytics.isRemoteConfigsReady
+GameAnalytics.PlayerJoined = GameAnalytics.playerJoined
+GameAnalytics.PlayerRemoved = GameAnalytics.playerRemoved
+GameAnalytics.ProcessReceiptCallback = GameAnalytics.processReceiptCallback
+GameAnalytics.SetCustomDimension01 = GameAnalytics.setCustomDimension01
+GameAnalytics.SetCustomDimension02 = GameAnalytics.setCustomDimension02
+GameAnalytics.SetCustomDimension03 = GameAnalytics.setCustomDimension03
+GameAnalytics.SetEnabledAutomaticSendBusinessEvents = GameAnalytics.setEnabledAutomaticSendBusinessEvents
+GameAnalytics.SetEnabledCustomUserId = GameAnalytics.setEnabledCustomUserId
+GameAnalytics.SetEnabledDebugLog = GameAnalytics.setEnabledDebugLog
+GameAnalytics.SetEnabledEventSubmission = GameAnalytics.setEnabledEventSubmission
+GameAnalytics.SetEnabledInfoLog = GameAnalytics.setEnabledInfoLog
+GameAnalytics.SetEnabledReportErrors = GameAnalytics.setEnabledReportErrors
+GameAnalytics.SetEnabledVerboseLog = GameAnalytics.setEnabledVerboseLog
+GameAnalytics.StartNewSession = GameAnalytics.startNewSession
 
 return GameAnalytics

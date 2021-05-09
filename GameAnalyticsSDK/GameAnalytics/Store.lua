@@ -41,7 +41,7 @@ local Store = {
 	EventsQueue = {},
 }
 
-function Store.GetPlayerData(player: Player)
+function Store.getPlayerData(player: Player)
 	local success, playerData = DataStorePromise.promiseGet(Store.PlayerDS, player.UserId):catch(catchFactory("DataStorePromise.promiseGet")):await()
 	if not success then
 		playerData = {}
@@ -50,7 +50,7 @@ function Store.GetPlayerData(player: Player)
 	return playerData
 end
 
-function Store.GetPlayerDataFromCache(userId: number)
+function Store.getPlayerDataFromCache(userId: number)
 	local playerData = Store.PlayerCache[tonumber(userId)]
 	if playerData then
 		return playerData
@@ -60,7 +60,7 @@ function Store.GetPlayerDataFromCache(userId: number)
 	return playerData
 end
 
-function Store.GetErrorDataStore(scope: string?): DataStore
+function Store.getErrorDataStore(scope: string?): DataStore
 	local success, errorDataStore = DataStorePromise.promiseDataStore("GA_ErrorDS_1.0.0", scope):catch(catchFactory("DataStorePromise.promiseDataStore")):await()
 	if not success then
 		errorDataStore = {}
@@ -69,9 +69,9 @@ function Store.GetErrorDataStore(scope: string?): DataStore
 	return errorDataStore
 end
 
-function Store.SavePlayerData(player: Player)
+function Store.savePlayerData(player: Player)
 	-- Variables
-	local playerData = Store.GetPlayerDataFromCache(player.UserId)
+	local playerData = Store.getPlayerDataFromCache(player.UserId)
 	local savePlayerData = {}
 	if not playerData then
 		return
@@ -87,7 +87,7 @@ function Store.SavePlayerData(player: Player)
 	DataStorePromise.promiseSet(Store.PlayerDS, player.UserId, savePlayerData):catch(catchFactory("DataStorePromise.promiseSet")):await()
 end
 
-function Store.IncrementErrorCount(errorDataStore: DataStore, errorKey: string, step: number?)
+function Store.incrementErrorCount(errorDataStore: DataStore, errorKey: string, step: number?)
 	if not errorKey then
 		return
 	end
