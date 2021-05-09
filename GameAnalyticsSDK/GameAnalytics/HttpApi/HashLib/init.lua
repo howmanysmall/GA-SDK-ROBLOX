@@ -1,3 +1,4 @@
+--!nocheck
 --[=[------------------------------------------------------------------------------------------------------------------------
 -- HashLib by Egor Skriptunoff, boatbomber, and howmanysmall
 
@@ -100,7 +101,6 @@ local sha2_H_ext512_lo, sha2_H_ext512_hi = {
 
 local md5_K, md5_sha1_H = {}, {0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476, 0xC3D2E1F0}
 local md5_next_shift = {0, 0, 0, 0, 0, 0, 0, 0, 28, 25, 26, 27, 0, 0, 10, 9, 11, 12, 0, 15, 16, 17, 18, 0, 20, 22, 23, 21}
-local HEX64, XOR64A5, lanes_index_base -- defined only for branches that internally use 64-bit integers: "INT64" and "FFI"
 local common_W = {} -- temporary table shared between all calculations (to avoid creating new temporary table every time)
 local K_lo_modulo, hi_factor, hi_factor_keccak = 4294967296, 0, 0
 
@@ -674,17 +674,10 @@ end
 
 -- Calculating IVs for SHA512/224 and SHA512/256
 for width = 224, 256, 32 do
-	local H_lo, H_hi = {}, nil
-	if XOR64A5 then
-		for j = 1, 8 do
-			H_lo[j] = XOR64A5(sha2_H_lo[j])
-		end
-	else
-		H_hi = {}
-		for j = 1, 8 do
-			H_lo[j] = bit32_bxor(sha2_H_lo[j], 0xA5A5A5A5) % 4294967296
-			H_hi[j] = bit32_bxor(sha2_H_hi[j], 0xA5A5A5A5) % 4294967296
-		end
+	local H_lo, H_hi = {}, {}
+	for j = 1, 8 do
+		H_lo[j] = bit32_bxor(sha2_H_lo[j], 0xA5A5A5A5) % 4294967296
+		H_hi[j] = bit32_bxor(sha2_H_hi[j], 0xA5A5A5A5) % 4294967296
 	end
 
 	sha512_feed_128(H_lo, H_hi, "SHA-512/" .. tostring(width) .. "\128" .. string.rep("\0", 115) .. "88", 0, 128)
@@ -795,7 +788,7 @@ end
 
 local function sha512ext(width, message)
 	-- Create an instance (private objects for current calculation)
-	local length, tail, H_lo, H_hi = 0.0, "", table.pack(table.unpack(sha2_H_ext512_lo[width])), not HEX64 and table.pack(table.unpack(sha2_H_ext512_hi[width]))
+	local length, tail, H_lo, H_hi = 0.0, "", table.pack(table.unpack(sha2_H_ext512_lo[width])), table.pack(table.unpack(sha2_H_ext512_hi[width]))
 
 	local function partial(message_part)
 		if message_part then
@@ -837,18 +830,11 @@ local function sha512ext(width, message)
 				sha512_feed_128(H_lo, H_hi, final_blocks, 0, #final_blocks)
 				local max_reg = math.ceil(width / 64)
 
-				if HEX64 then
-					for j = 1, max_reg do
-						H_lo[j] = HEX64(H_lo[j])
-					end
-				else
-					for j = 1, max_reg do
-						H_lo[j] = string.format("%08x", H_hi[j] % 4294967296) .. string.format("%08x", H_lo[j] % 4294967296)
-					end
-
-					H_hi = nil
+				for j = 1, max_reg do
+					H_lo[j] = string.format("%08x", H_hi[j] % 4294967296) .. string.format("%08x", H_lo[j] % 4294967296)
 				end
 
+				H_hi = nil
 				H_lo = string.sub(table.concat(H_lo, "", 1, max_reg), 1, width / 4)
 			end
 
@@ -1059,14 +1045,8 @@ local function keccak(block_size_in_bytes, digest_size_in_bytes, is_SHAKE, messa
 					end
 
 					qwords_qty = math.floor(math.min(qwords_qty, total_lanes - lanes_used))
-					if hi_factor_keccak ~= 0 then
-						for j = 1, qwords_qty do
-							qwords[j] = HEX64(lanes_lo[lanes_used + j - 1 + lanes_index_base])
-						end
-					else
-						for j = 1, qwords_qty do
-							qwords[j] = string.format("%08x", lanes_hi[lanes_used + j] % 4294967296) .. string.format("%08x", lanes_lo[lanes_used + j] % 4294967296)
-						end
+					for j = 1, qwords_qty do
+						qwords[j] = string.format("%08x", lanes_hi[lanes_used + j] % 4294967296) .. string.format("%08x", lanes_lo[lanes_used + j] % 4294967296)
 					end
 
 					lanes_used = lanes_used + qwords_qty

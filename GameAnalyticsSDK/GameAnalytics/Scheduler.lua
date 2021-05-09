@@ -61,7 +61,7 @@ local function HeartbeatStep()
 		local Arguments = Current.Arguments
 		local Function = Current.Function
 
-		if typeof(Function) == "Instance" then
+		if typeof(Function) == "Instance" and Function:IsA("BindableEvent") then
 			if Arguments then
 				Function:Fire(table.unpack(Arguments, 2, Arguments[1]))
 			else

@@ -33,6 +33,7 @@ export type GAProgressionStatus = typeof(GAProgressionStatus.Start)
 export type GAErrorSeverity = typeof(GAErrorSeverity.debug)
 
 type Array<Value> = {Value}
+type Dictionary<Value> = {[string]: Value}
 type integer = number
 type float = number
 
@@ -47,7 +48,7 @@ export type BusinessEventOptions = {
 export type ResourceEventOptions = {
 	amount: float?,
 	currency: string?,
-	flowType: EGAResourceFlowType?,
+	flowType: GAResourceFlowType?,
 	itemId: string?,
 	itemType: string?,
 }
@@ -56,7 +57,7 @@ export type ProgressionEventOptions = {
 	progression01: string?,
 	progression02: string?,
 	progression03: string?,
-	progressionStatus: EGAProgressionStatus?,
+	progressionStatus: GAProgressionStatus?,
 	score: integer?,
 }
 
@@ -66,7 +67,7 @@ export type DesignEventOptions = {
 }
 
 export type ErrorEventOptions = {
-	severity: EGAErrorSeverity?,
+	severity: GAErrorSeverity?,
 	message: string?,
 }
 
@@ -98,11 +99,12 @@ local ONE_HOUR_IN_SECONDS = 3600
 local MAX_ERRORS_PER_HOUR = 10
 
 local onPlayerReadyEvent
-local errorDataStore = {}
+local errorDataStore
 local errorCountCache = {}
 local errorCountCacheKeys = {}
 
 local initializationQueue = {}
+local initializationQueueIsDisabled = false
 local initializationQueueByUserId = {}
 
 local Scheduler_Spawn = Scheduler.Spawn
@@ -120,7 +122,7 @@ local function promiseCountryRegionForPlayer(player: Player)
 end
 
 local function addToInitializationQueue(func, ...)
-	if initializationQueue ~= nil then
+	if not initializationQueueIsDisabled then
 		table.insert(initializationQueue, {
 			Args = table.pack(...),
 			Func = func,
@@ -788,32 +790,39 @@ function GameAnalytics:initialize(options: InitializeOptions)
 			self:setEnabledVerboseLog(options.enableVerboseLog)
 		end
 
-		if options.availableCustomDimensions01 ~= nil and #options.availableCustomDimensions01 > 0 then
-			self:configureAvailableCustomDimensions01(options.availableCustomDimensions01)
+		local availableCustomDimensions01 = options.availableCustomDimensions01
+		if type(availableCustomDimensions01) == "table" and #availableCustomDimensions01 > 0 then
+			self:configureAvailableCustomDimensions01(availableCustomDimensions01)
 		end
 
-		if options.availableCustomDimensions02 ~= nil and #options.availableCustomDimensions02 > 0 then
-			self:configureAvailableCustomDimensions02(options.availableCustomDimensions02)
+		local availableCustomDimensions02 = options.availableCustomDimensions02
+		if type(availableCustomDimensions02) == "table" and #availableCustomDimensions02 > 0 then
+			self:configureAvailableCustomDimensions02(availableCustomDimensions02)
 		end
 
-		if options.availableCustomDimensions03 ~= nil and #options.availableCustomDimensions03 > 0 then
-			self:configureAvailableCustomDimensions03(options.availableCustomDimensions03)
+		local availableCustomDimensions03 = options.availableCustomDimensions03
+		if type(availableCustomDimensions03) == "table" and #availableCustomDimensions03 > 0 then
+			self:configureAvailableCustomDimensions03(availableCustomDimensions03)
 		end
 
-		if options.availableResourceCurrencies ~= nil and #options.availableResourceCurrencies > 0 then
-			self:configureAvailableResourceCurrencies(options.availableResourceCurrencies)
+		local availableResourceCurrencies = options.availableResourceCurrencies
+		if type(availableResourceCurrencies) == "table" and #availableResourceCurrencies > 0 then
+			self:configureAvailableResourceCurrencies(availableResourceCurrencies)
 		end
 
-		if options.availableResourceItemTypes ~= nil and #options.availableResourceItemTypes > 0 then
-			self:configureAvailableResourceItemTypes(options.availableResourceItemTypes)
+		local availableResourceItemTypes = options.availableResourceItemTypes
+		if type(availableResourceItemTypes) == "table" and #availableResourceItemTypes > 0 then
+			self:configureAvailableResourceItemTypes(availableResourceItemTypes)
 		end
 
-		if options.build ~= nil and #options.build > 0 then
-			self:configureBuild(options.build)
+		local build = options.build
+		if type(build) == "string" and #build > 0 then
+			self:configureBuild(build)
 		end
 
-		if options.availableGamepasses ~= nil and #options.availableGamepasses > 0 then
-			self:configureAvailableGamepasses(options.availableGamepasses)
+		local availableGamepasses = options.availableResourceItemTypes
+		if type(availableGamepasses) == "table" and #availableGamepasses > 0 then
+			self:configureAvailableGamepasses(availableGamepasses)
 		end
 
 		if options.enableDebugLog ~= nil then
@@ -871,7 +880,8 @@ function GameAnalytics:initialize(options: InitializeOptions)
 		end
 
 		Logger:information("Server initialization queue called #" .. #initializationQueue .. " events")
-		initializationQueue = nil
+		initializationQueueIsDisabled = true
+		table.clear(initializationQueue)
 		Events:processEventQueue()
 	end)
 end

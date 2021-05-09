@@ -4,19 +4,21 @@ local t = require(script.Parent.Parent.Vendor.t)
 
 local DataStorePromise = {}
 
+type ValidKeys = string | number
+
 local function getDataStore(name: string, scope: string?)
 	return DataStoreService:GetDataStore(name, scope)
 end
 
-local function getAsync(dataStore: DataStore, key: string)
+local function getAsync(dataStore, key: ValidKeys)
 	return dataStore:GetAsync(key)
 end
 
-local function setAsync(dataStore: DataStore, key: string, value: any)
+local function setAsync(dataStore, key: ValidKeys, value: any)
 	return dataStore:SetAsync(key, value)
 end
 
-local function incrementAsync(dataStore: DataStore, key: string, delta: number?)
+local function incrementAsync(dataStore, key: ValidKeys, delta: number?)
 	return dataStore:IncrementAsync(key, delta)
 end
 
@@ -39,7 +41,7 @@ function DataStorePromise.promiseDataStore(name: string, scope: string?)
 	end)
 end
 
-function DataStorePromise.promiseGet(dataStore: DataStore, key: string)
+function DataStorePromise.promiseGet(dataStore: DataStore, key: ValidKeys)
 	local typeSuccess, typeError = promiseGetTuple(dataStore, key)
 	if not typeSuccess then
 		return Promise.reject(typeError)
@@ -51,7 +53,7 @@ function DataStorePromise.promiseGet(dataStore: DataStore, key: string)
 	end)
 end
 
-function DataStorePromise.promiseSet(dataStore: DataStore, key: string, value: any)
+function DataStorePromise.promiseSet(dataStore: DataStore, key: ValidKeys, value: any)
 	local typeSuccess, typeError = promiseSetTuple(dataStore, key, value)
 	if not typeSuccess then
 		return Promise.reject(typeError)
@@ -63,7 +65,7 @@ function DataStorePromise.promiseSet(dataStore: DataStore, key: string, value: a
 	end)
 end
 
-function DataStorePromise.promiseIncrement(dataStore: DataStore, key: string, delta: number?)
+function DataStorePromise.promiseIncrement(dataStore: DataStore, key: ValidKeys, delta: number?)
 	local typeSuccess, typeError = promiseIncrementTuple(dataStore, key, delta)
 	if not typeSuccess then
 		return Promise.reject(typeError)

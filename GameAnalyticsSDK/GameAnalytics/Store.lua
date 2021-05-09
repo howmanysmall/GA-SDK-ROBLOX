@@ -60,7 +60,7 @@ function Store.GetPlayerDataFromCache(userId: number)
 	return playerData
 end
 
-function Store.GetErrorDataStore(scope: string?)
+function Store.GetErrorDataStore(scope: string?): DataStore
 	local success, errorDataStore = DataStorePromise.promiseDataStore("GA_ErrorDS_1.0.0", scope):catch(catchFactory("DataStorePromise.promiseDataStore")):await()
 	if not success then
 		errorDataStore = {}
@@ -87,7 +87,7 @@ function Store.SavePlayerData(player: Player)
 	DataStorePromise.promiseSet(Store.PlayerDS, player.UserId, savePlayerData):catch(catchFactory("DataStorePromise.promiseSet")):await()
 end
 
-function Store.IncrementErrorCount(errorDataStore: DataStore, errorKey: string?, step: number?)
+function Store.IncrementErrorCount(errorDataStore: DataStore, errorKey: string, step: number?)
 	if not errorKey then
 		return
 	end

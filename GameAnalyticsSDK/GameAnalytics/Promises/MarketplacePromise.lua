@@ -17,16 +17,15 @@ for _, infoType in ipairs(Enum.InfoType:GetEnumItems()) do
 	productCache[infoType] = {}
 end
 
-local promiseUserOwnsGamePassTuple = t.tuple(t.union(t.instanceIsA("Player"), t.integer), t.integer)
+local promiseUserOwnsGamePassTuple = t.tuple(t.integer, t.integer)
 local promiseProductInfoTuple = t.tuple(t.integer, t.optional(t.enum(Enum.InfoType)))
 
-function MarketplacePromise.promiseUserOwnsGamePass(playerOrUserId: Player | number, gamePassId: number)
-	local typeSuccess, typeError = promiseUserOwnsGamePassTuple(playerOrUserId, gamePassId)
+function MarketplacePromise.promiseUserOwnsGamePass(userId: number, gamePassId: number)
+	local typeSuccess, typeError = promiseUserOwnsGamePassTuple(userId, gamePassId)
 	if not typeSuccess then
 		return Promise.reject(typeError)
 	end
 
-	local userId = type(playerOrUserId) == "number" and playerOrUserId or playerOrUserId.UserId
 	return Promise.defer(function(resolve, reject)
 		local success, valueOrError = pcall(userOwnsGamePassAsync, userId, gamePassId);
 		(success and resolve or reject)(valueOrError)

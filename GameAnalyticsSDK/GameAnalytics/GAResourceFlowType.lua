@@ -1,4 +1,4 @@
-local lockTable = require(script.lockTable)
+local lockTable = require(script.Parent.lockTable)
 
 return lockTable({
 	Source = "Source",
