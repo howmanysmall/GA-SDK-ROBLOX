@@ -820,7 +820,7 @@ function GameAnalytics:initialize(options: InitializeOptions)
 			self:configureBuild(build)
 		end
 
-		local availableGamepasses = options.availableResourceItemTypes
+		local availableGamepasses = options.availableGamepasses
 		if type(availableGamepasses) == "table" and #availableGamepasses > 0 then
 			self:configureAvailableGamepasses(availableGamepasses)
 		end
