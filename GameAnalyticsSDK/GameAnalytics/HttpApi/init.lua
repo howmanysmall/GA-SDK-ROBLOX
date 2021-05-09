@@ -179,9 +179,9 @@ function HttpApi:oldInitRequest(gameKey, secretKey, build, playerData, playerId)
 
 	Logger:debug("init payload: " .. payload)
 
-	local res
-	local success, err = pcall(function()
-		res = HttpService:RequestAsync({
+	local response
+	local success, requestError = pcall(function()
+		response = HttpService:RequestAsync({
 			Url = url,
 			Method = "POST",
 			Headers = {
@@ -194,45 +194,45 @@ function HttpApi:oldInitRequest(gameKey, secretKey, build, playerData, playerId)
 	end)
 
 	if not success then
-		Logger:debug("Failed Init Call. error: " .. err)
+		Logger:debug("Failed Init Call. error: " .. requestError)
 		return {
-			statusCode = self.EGAHTTPApiResponse.UnknownResponseCode,
 			body = nil,
+			statusCode = self.EGAHTTPApiResponse.UnknownResponseCode,
 		}
 	end
 
-	Logger:debug("init request content: " .. res.Body)
-	local requestResponseEnum = processRequestResponse(res, "Init")
+	Logger:debug("init request content: " .. response.Body)
+	local requestResponseEnum = processRequestResponse(response, "Init")
 
 	-- if not 200 result
 	if requestResponseEnum ~= self.EGAHTTPApiResponse.Ok and requestResponseEnum ~= self.EGAHTTPApiResponse.Created and requestResponseEnum ~= self.EGAHTTPApiResponse.BadRequest then
 		Logger:debug("Failed Init Call. URL: " .. url .. ", JSONString: " .. payload .. ", Authorization: " .. authorization)
 		return {
-			statusCode = requestResponseEnum,
 			body = nil,
+			statusCode = requestResponseEnum,
 		}
 	end
 
 	--Response
 	local responseBody
 	success = pcall(function()
-		responseBody = HttpService:JSONDecode(res.Body)
+		responseBody = HttpService:JSONDecode(response.Body)
 	end)
 
 	if not success then
-		Logger:debug("Failed Init Call. Json decoding failed: " .. err)
+		Logger:debug("Failed Init Call. Json decoding failed: " .. requestError)
 		return {
-			statusCode = self.EGAHTTPApiResponse.JsonDecodeFailed,
 			body = nil,
+			statusCode = self.EGAHTTPApiResponse.JsonDecodeFailed,
 		}
 	end
 
 	-- print reason if bad request
 	if requestResponseEnum == self.EGAHTTPApiResponse.BadRequest then
-		Logger:debug("Failed Init Call. Bad request. Response: " .. res.Body)
+		Logger:debug("Failed Init Call. Bad request. Response: " .. response.Body)
 		return {
-			statusCode = requestResponseEnum,
 			body = nil,
+			statusCode = requestResponseEnum,
 		}
 	end
 
@@ -240,15 +240,15 @@ function HttpApi:oldInitRequest(gameKey, secretKey, build, playerData, playerId)
 	local validatedInitValues = Validation.validateAndCleanInitRequestResponse(responseBody, requestResponseEnum == self.EGAHTTPApiResponse.Created)
 	if not validatedInitValues then
 		return {
-			statusCode = self.EGAHTTPApiResponse.BadResponse,
 			body = nil,
+			statusCode = self.EGAHTTPApiResponse.BadResponse,
 		}
 	end
 
 	-- all ok
 	return {
-		statusCode = requestResponseEnum,
 		body = responseBody,
+		statusCode = requestResponseEnum,
 	}
 end
 
@@ -344,9 +344,9 @@ function HttpApi:oldSendEventsInArray(gameKey, secretKey, eventArray)
 	payload = string.gsub(payload, "\"country_code\":\"unknown\"", "\"country_code\":null")
 	local authorization = encode(payload, secretKey)
 
-	local res
-	local success, err = pcall(function()
-		res = HttpService:RequestAsync({
+	local response
+	local success, requestError = pcall(function()
+		response = HttpService:RequestAsync({
 			Body = payload,
 			Headers = {
 				Authorization = authorization,
@@ -359,51 +359,51 @@ function HttpApi:oldSendEventsInArray(gameKey, secretKey, eventArray)
 	end)
 
 	if not success then
-		Logger:debug("Failed Events Call. error: " .. err)
+		Logger:debug("Failed Events Call. error: " .. requestError)
 		return {
-			statusCode = self.EGAHTTPApiResponse.UnknownResponseCode,
 			body = nil,
+			statusCode = self.EGAHTTPApiResponse.UnknownResponseCode,
 		}
 	end
 
-	Logger:debug("body: " .. res.Body)
-	local requestResponseEnum = processRequestResponse(res, "Events")
+	Logger:debug("body: " .. response.Body)
+	local requestResponseEnum = processRequestResponse(response, "Events")
 
 	-- if not 200 result
 	if requestResponseEnum ~= self.EGAHTTPApiResponse.Ok and requestResponseEnum ~= self.EGAHTTPApiResponse.Created and requestResponseEnum ~= self.EGAHTTPApiResponse.BadRequest then
 		Logger:debug("Failed Events Call. URL: " .. url .. ", JSONString: " .. payload .. ", Authorization: " .. authorization)
 		return {
-			statusCode = requestResponseEnum,
 			body = nil,
+			statusCode = requestResponseEnum,
 		}
 	end
 
 	local responseBody
 	pcall(function()
-		responseBody = HttpService:JSONDecode(res.Body)
+		responseBody = HttpService:JSONDecode(response.Body)
 	end)
 
 	if not responseBody then
 		Logger:debug("Failed Events Call. Json decoding failed")
 		return {
-			statusCode = self.EGAHTTPApiResponse.JsonDecodeFailed,
 			body = nil,
+			statusCode = self.EGAHTTPApiResponse.JsonDecodeFailed,
 		}
 	end
 
 	-- print reason if bad request
 	if requestResponseEnum == self.EGAHTTPApiResponse.BadRequest then
-		Logger:debug("Failed Events Call. Bad request. Response: " .. res.Body)
+		Logger:debug("Failed Events Call. Bad request. Response: " .. response.Body)
 		return {
-			statusCode = requestResponseEnum,
 			body = nil,
+			statusCode = requestResponseEnum,
 		}
 	end
 
 	-- all ok
 	return {
-		statusCode = self.EGAHTTPApiResponse.Ok,
 		body = responseBody,
+		statusCode = self.EGAHTTPApiResponse.Ok,
 	}
 end
 
